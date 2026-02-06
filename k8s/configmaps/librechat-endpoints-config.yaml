@@ -7,6 +7,91 @@ data:
   librechat.yaml: |
     version: 1.2.9
     cache: true
+
+    interface:
+      endpointsMenu: false
+      presets: false
+      bookmarks: false
+      parameters: false
+      multiConvo: false
+      agents: false
+      prompts: false
+
+    modelSpecs:
+      enforce: true
+      prioritize: true
+      list:
+        # === Search All Sources ===
+        - name: unified-gemini
+          label: "All Sources (Gemini)"
+          description: "Search Confluence, SharePoint, and Box with Gemini"
+          default: true
+          showIconInMenu: true
+          showIconInHeader: true
+          preset:
+            endpoint: "All Sources + Gemini"
+            model: "gemini-unified-search"
+
+        - name: unified-openai
+          label: "All Sources (OpenAI)"
+          description: "Search Confluence, SharePoint, and Box with OpenAI"
+          showIconInMenu: true
+          showIconInHeader: true
+          preset:
+            endpoint: "All Sources + OpenAI"
+            model: "openai-unified-search"
+
+        # === Confluence ===
+        - name: confluence-gemini
+          label: "Confluence (Gemini)"
+          description: "Search Confluence with Gemini"
+          showIconInMenu: true
+          preset:
+            endpoint: "Confluence + Gemini"
+            model: "gemini-confluence-search"
+
+        - name: confluence-openai
+          label: "Confluence (OpenAI)"
+          description: "Search Confluence with OpenAI"
+          showIconInMenu: true
+          preset:
+            endpoint: "Confluence + OpenAI"
+            model: "openai-confluence-search"
+
+        # === SharePoint ===
+        - name: sharepoint-gemini
+          label: "SharePoint (Gemini)"
+          description: "Search SharePoint with Gemini"
+          showIconInMenu: true
+          preset:
+            endpoint: "SharePoint + Gemini"
+            model: "gemini-sharepoint-search"
+
+        - name: sharepoint-openai
+          label: "SharePoint (OpenAI)"
+          description: "Search SharePoint with OpenAI"
+          showIconInMenu: true
+          preset:
+            endpoint: "SharePoint + OpenAI"
+            model: "openai-sharepoint-search"
+
+        # === Box ===
+        - name: box-gemini
+          label: "Box (Gemini)"
+          description: "Search Box with Gemini"
+          showIconInMenu: true
+          preset:
+            endpoint: "Box + Gemini"
+            model: "gemini-box-search"
+
+        - name: box-openai
+          label: "Box (OpenAI)"
+          description: "Search Box with OpenAI"
+          showIconInMenu: true
+          preset:
+            endpoint: "Box + OpenAI"
+            model: "openai-box-search"
+
     endpoints:
       custom:
         - name: "Confluence + Gemini"
@@ -18,7 +103,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search Confluence (Gemini)"
+          modelDisplayLabel: "Confluence (Gemini)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "Confluence + OpenAI"
@@ -30,7 +115,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search Confluence (OpenAI)"
+          modelDisplayLabel: "Confluence (OpenAI)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "SharePoint + Gemini"
@@ -42,7 +127,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search SharePoint (Gemini)"
+          modelDisplayLabel: "SharePoint (Gemini)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "SharePoint + OpenAI"
@@ -54,7 +139,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search SharePoint (OpenAI)"
+          modelDisplayLabel: "SharePoint (OpenAI)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "Box + Gemini"
@@ -66,7 +151,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search Box (Gemini)"
+          modelDisplayLabel: "Box (Gemini)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "Box + OpenAI"
@@ -78,7 +163,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search Box (OpenAI)"
+          modelDisplayLabel: "Box (OpenAI)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "All Sources + Gemini"
@@ -90,7 +175,7 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search All (Gemini)"
+          modelDisplayLabel: "All Sources (Gemini)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
         - name: "All Sources + OpenAI"
@@ -102,5 +187,5 @@ data:
           titleConvo: true
           summarize: false
           forcePrompt: false
-          modelDisplayLabel: "Search All (OpenAI)"
+          modelDisplayLabel: "All Sources (OpenAI)"
           dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
