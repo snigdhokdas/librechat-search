@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openai-search-proxy
+  namespace: librechat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openai-search-proxy
+  template:
+    metadata:
+      labels:
+        app: openai-search-proxy
+    spec:
+      containers:
+      - name: openai-search-proxy
+        image: 281355808288.dkr.ecr.us-east-1.amazonaws.com/librechat-openai-search-proxy:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: PORT
+          value: "3001"
+        - name: OPENAI_MODEL
+          value: "gpt-5-mini"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: librechat-secrets
+              key: OPENAI_API_KEY
+        - name: ATLASSIAN_CONFLUENCE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_CONFLUENCE_TOKEN
+        - name: ATLASSIAN_CLOUD_ID
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_CLOUD_ID
+        - name: ATLASSIAN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_DOMAIN
+        - name: MICROSOFT_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: microsoft-mcp-secrets
+              key: MICROSOFT_ACCESS_TOKEN
+        - name: BOX_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: box-mcp-secrets
+              key: BOX_ACCESS_TOKEN
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi

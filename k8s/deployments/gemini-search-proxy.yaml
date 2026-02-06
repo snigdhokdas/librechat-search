@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gemini-search-proxy
+  namespace: librechat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gemini-search-proxy
+  template:
+    metadata:
+      labels:
+        app: gemini-search-proxy
+    spec:
+      containers:
+      - name: gemini-search-proxy
+        image: 281355808288.dkr.ecr.us-east-1.amazonaws.com/librechat-gemini-search-proxy:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: PORT
+          value: "3000"
+        - name: GEMINI_MODEL
+          value: "gemini-2.5-flash"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: librechat-secrets
+              key: GOOGLE_API_KEY
+        - name: ATLASSIAN_CONFLUENCE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_CONFLUENCE_TOKEN
+        - name: ATLASSIAN_CLOUD_ID
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_CLOUD_ID
+        - name: ATLASSIAN_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: atlassian-mcp-secrets
+              key: ATLASSIAN_DOMAIN
+        - name: MICROSOFT_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: microsoft-mcp-secrets
+              key: MICROSOFT_ACCESS_TOKEN
+        - name: BOX_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: box-mcp-secrets
+              key: BOX_ACCESS_TOKEN
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi

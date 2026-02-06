@@ -1,0 +1,8 @@
+# Reference values for Bitnami MongoDB Helm chart
+# Install: helm install mongodb oci://registry-1.docker.io/bitnamicharts/mongodb -n librechat -f helm/mongodb-values.yaml
+architecture: standalone
+auth:
+  rootPassword: "<set-via-helm-install>"
+persistence:
+  enabled: true
+  size: 10Gi

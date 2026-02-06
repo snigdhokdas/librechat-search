@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: librechat
+  namespace: librechat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: librechat
+  template:
+    metadata:
+      labels:
+        app: librechat
+    spec:
+      containers:
+      - name: librechat
+        image: librechat/librechat:latest
+        ports:
+        - containerPort: 3080
+        env:
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: librechat-secrets
+              key: GOOGLE_API_KEY
+        - name: PLUGINS_ENABLED
+          value: "false"
+        - name: DEBUG_PLUGINS
+          value: "true"
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/client/public/images
+        - name: logs
+          mountPath: /app/logs
+        - name: config
+          mountPath: /app/librechat.yaml
+          subPath: librechat.yaml
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+      volumes:
+      - name: uploads
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: librechat-endpoints-config

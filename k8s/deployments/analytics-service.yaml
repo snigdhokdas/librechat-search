@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: librechat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+      - name: analytics-service
+        image: 281355808288.dkr.ecr.us-east-1.amazonaws.com/librechat-analytics-service:latest
+        ports:
+        - containerPort: 3008
+        command: ["sh", "-c", "export REDIS_URI=redis://default:${REDIS_PASSWORD}@redis-master.librechat.svc.cluster.local:6379 && node server.js"]
+        env:
+        - name: PORT
+          value: "3008"
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: librechat-secrets
+              key: MONGO_URI
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: librechat-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi

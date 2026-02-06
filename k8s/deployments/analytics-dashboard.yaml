@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-dashboard
+  namespace: librechat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-dashboard
+  template:
+    metadata:
+      labels:
+        app: analytics-dashboard
+    spec:
+      containers:
+      - name: analytics-dashboard
+        image: 281355808288.dkr.ecr.us-east-1.amazonaws.com/librechat-analytics-dashboard:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi

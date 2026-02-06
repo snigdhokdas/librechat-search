@@ -1,0 +1,9 @@
+# Reference values for Bitnami Redis Helm chart
+# Install: helm install redis oci://registry-1.docker.io/bitnamicharts/redis -n librechat -f helm/redis-values.yaml
+architecture: standalone
+auth:
+  password: "<set-via-helm-install>"
+master:
+  persistence:
+    enabled: true
+    size: 5Gi

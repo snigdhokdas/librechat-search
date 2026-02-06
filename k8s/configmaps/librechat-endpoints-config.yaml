@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: librechat-endpoints-config
+  namespace: librechat
+data:
+  librechat.yaml: |
+    version: 1.2.9
+    cache: true
+    endpoints:
+      custom:
+        - name: "Confluence + Gemini"
+          apiKey: "${GOOGLE_API_KEY}"
+          baseURL: "http://gemini-search-proxy.librechat.svc.cluster.local:3000/confluence"
+          models:
+            default: ["gemini-confluence-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search Confluence (Gemini)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "Confluence + OpenAI"
+          apiKey: "${OPENAI_API_KEY}"
+          baseURL: "http://openai-search-proxy.librechat.svc.cluster.local:3001/confluence"
+          models:
+            default: ["openai-confluence-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search Confluence (OpenAI)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "SharePoint + Gemini"
+          apiKey: "${GOOGLE_API_KEY}"
+          baseURL: "http://gemini-search-proxy.librechat.svc.cluster.local:3000/sharepoint"
+          models:
+            default: ["gemini-sharepoint-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search SharePoint (Gemini)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "SharePoint + OpenAI"
+          apiKey: "${OPENAI_API_KEY}"
+          baseURL: "http://openai-search-proxy.librechat.svc.cluster.local:3001/sharepoint"
+          models:
+            default: ["openai-sharepoint-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search SharePoint (OpenAI)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "Box + Gemini"
+          apiKey: "${GOOGLE_API_KEY}"
+          baseURL: "http://gemini-search-proxy.librechat.svc.cluster.local:3000/box"
+          models:
+            default: ["gemini-box-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search Box (Gemini)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "Box + OpenAI"
+          apiKey: "${OPENAI_API_KEY}"
+          baseURL: "http://openai-search-proxy.librechat.svc.cluster.local:3001/box"
+          models:
+            default: ["openai-box-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search Box (OpenAI)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "All Sources + Gemini"
+          apiKey: "${GOOGLE_API_KEY}"
+          baseURL: "http://gemini-search-proxy.librechat.svc.cluster.local:3000/unified"
+          models:
+            default: ["gemini-unified-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search All (Gemini)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+        - name: "All Sources + OpenAI"
+          apiKey: "${OPENAI_API_KEY}"
+          baseURL: "http://openai-search-proxy.librechat.svc.cluster.local:3001/unified"
+          models:
+            default: ["openai-unified-search"]
+            fetch: true
+          titleConvo: true
+          summarize: false
+          forcePrompt: false
+          modelDisplayLabel: "Search All (OpenAI)"
+          dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]

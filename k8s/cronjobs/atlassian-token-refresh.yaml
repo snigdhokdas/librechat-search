@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: atlassian-token-refresh
+  namespace: librechat
+spec:
+  schedule: "*/50 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: token-refresher
+          containers:
+          - name: token-refresher
+            image: 281355808288.dkr.ecr.us-east-1.amazonaws.com/librechat-token-refresher:latest
+            env:
+            - name: ATLASSIAN_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: atlassian-mcp-secrets
+                  key: ATLASSIAN_CLIENT_ID
+            - name: ATLASSIAN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: atlassian-mcp-secrets
+                  key: ATLASSIAN_CLIENT_SECRET
+            volumeMounts:
+            - name: secrets
+              mountPath: /var/secrets
+              readOnly: true
+          volumes:
+          - name: secrets
+            secret:
+              secretName: atlassian-mcp-secrets
+          restartPolicy: OnFailure
