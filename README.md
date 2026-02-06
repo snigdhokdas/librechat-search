@@ -101,7 +101,7 @@ librechat-search/
 │   ├── openai-search-proxy/    # OpenAI search proxy (4 sources via path routing)
 │   ├── analytics-service/      # Query tracking + caching (MongoDB + Redis)
 │   ├── analytics-dashboard/    # Web dashboard (nginx)
-│   └── token-refresher/        # Atlassian OAuth token refresh (CronJob)
+│   └── token-refresher/        # OAuth token refresh for all 3 sources (CronJob)
 ├── k8s/
 │   ├── deployments/            # Deployment manifests
 │   ├── services/               # Service manifests
@@ -133,3 +133,37 @@ librechat-search/
 |---|---|---|
 | `MONGO_URI` | librechat-secrets | MongoDB connection string |
 | `REDIS_PASSWORD` | librechat-secrets | Redis password (URI constructed at runtime) |
+
+## Infrastructure Dependencies
+
+### MongoDB (Helm-managed)
+
+MongoDB stores LibreChat chat history and analytics query tracking data. Deployed via Bitnami Helm chart.
+
+```bash
+helm install mongodb oci://registry-1.docker.io/bitnamicharts/mongodb -n librechat -f helm/mongodb-values.yaml
+```
+
+- **Service DNS**: `mongodb.librechat.svc.cluster.local:27017`
+- **Database**: `LibreChat` (chat history), `librechat_analytics` (analytics-service creates this)
+- **Values reference**: `helm/mongodb-values.yaml`
+
+### Redis (Helm-managed)
+
+Redis provides search result caching (24h TTL) via the analytics-service. Deployed via Bitnami Helm chart.
+
+```bash
+helm install redis oci://registry-1.docker.io/bitnamicharts/redis -n librechat -f helm/redis-values.yaml
+```
+
+- **Service DNS**: `redis-master.librechat.svc.cluster.local:6379`
+- **Values reference**: `helm/redis-values.yaml`
+
+### Token Refresh CronJob
+
+All three source APIs (Atlassian, Microsoft, Box) use OAuth tokens that expire quickly. A CronJob runs every 50 minutes to refresh all tokens and restart the proxy deployments:
+
+- **Schedule**: `*/50 * * * *`
+- **Sources refreshed**: Atlassian (Confluence), Microsoft (SharePoint), Box
+- **Manifest**: `k8s/cronjobs/atlassian-token-refresh.yaml`
+- **ServiceAccount**: `token-refresher` (needs RBAC for secret patching and deployment restarts)

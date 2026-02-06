@@ -1,8 +1,18 @@
-# Reference values for Bitnami MongoDB Helm chart
+# Bitnami MongoDB Helm chart values
 # Install: helm install mongodb oci://registry-1.docker.io/bitnamicharts/mongodb -n librechat -f helm/mongodb-values.yaml
-architecture: standalone
+#
+# MongoDB is REQUIRED by both LibreChat (chat history) and analytics-service (query tracking).
+# Service DNS: mongodb.librechat.svc.cluster.local:27017
 auth:
-  rootPassword: "<set-via-helm-install>"
+  enabled: true
+  rootUser: admin
+  rootPassword: "<SET-YOUR-ROOT-PASSWORD>"
+  username: librechat
+  password: "<SET-YOUR-APP-PASSWORD>"
+  database: LibreChat
+replicaCount: 1
 persistence:
   enabled: true
-  size: 10Gi
+  size: 20Gi
+metrics:
+  enabled: true

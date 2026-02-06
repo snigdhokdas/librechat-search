@@ -1,167 +1,117 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
-# Configuration
-VAULT_PATH="/var/secrets"
-LOG_FILE="/var/log/token-refresh.log"
-TEMP_DIR="/tmp/token-refresh"
+echo "=========================================="
+echo "Token Refresh Started: $(date)"
+echo "=========================================="
 
-# Logging function
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
-}
+# ============================================
+# ATLASSIAN TOKEN REFRESH
+# ============================================
+echo ""
+echo "=== Refreshing Atlassian Tokens ==="
 
-# Create temp directory
-mkdir -p "$TEMP_DIR"
+ATLASSIAN_CLIENT_ID=$(kubectl get secret atlassian-mcp-secrets -n librechat -o jsonpath='{.data.ATLASSIAN_CLIENT_ID}' | base64 -d)
+ATLASSIAN_CLIENT_SECRET=$(kubectl get secret atlassian-mcp-secrets -n librechat -o jsonpath='{.data.ATLASSIAN_CLIENT_SECRET}' | base64 -d)
+ATLASSIAN_REFRESH_TOKEN=$(kubectl get secret atlassian-mcp-secrets -n librechat -o jsonpath='{.data.ATLASSIAN_REFRESH_TOKEN}' | base64 -d)
 
-log "Starting token refresh process..."
+ATLASSIAN_RESPONSE=$(curl -s -X POST https://auth.atlassian.com/oauth/token \
+  -H "Content-Type: application/json" \
+  -d "{\"grant_type\":\"refresh_token\",\"client_id\":\"$ATLASSIAN_CLIENT_ID\",\"client_secret\":\"$ATLASSIAN_CLIENT_SECRET\",\"refresh_token\":\"$ATLASSIAN_REFRESH_TOKEN\"}")
 
-# Read current secrets
-CLIENT_ID=$(cat "$VAULT_PATH/ATLASSIAN_CLIENT_ID" | base64 -d)
-CLIENT_SECRET=$(cat "$VAULT_PATH/ATLASSIAN_CLIENT_SECRET" | base64 -d) 
-DOMAIN=$(cat "$VAULT_PATH/ATLASSIAN_DOMAIN" | base64 -d)
+ATLASSIAN_ACCESS=$(echo "$ATLASSIAN_RESPONSE" | jq -r '.access_token')
+ATLASSIAN_NEW_REFRESH=$(echo "$ATLASSIAN_RESPONSE" | jq -r '.refresh_token')
 
-# Get current tokens (these are base64 encoded JWTs)
-CURRENT_CONFLUENCE_TOKEN=$(cat "$VAULT_PATH/ATLASSIAN_CONFLUENCE_TOKEN" | base64 -d)
-CURRENT_JIRA_TOKEN=$(cat "$VAULT_PATH/ATLASSIAN_JIRA_TOKEN" | base64 -d)
+if [ "$ATLASSIAN_ACCESS" = "null" ] || [ -z "$ATLASSIAN_ACCESS" ]; then
+  echo "ERROR refreshing Atlassian tokens:"
+  echo "$ATLASSIAN_RESPONSE" | jq
+  ATLASSIAN_SUCCESS=false
+else
+  echo "Successfully refreshed Atlassian tokens"
+  kubectl patch secret atlassian-mcp-secrets -n librechat --type='merge' -p="{\"data\":{\"ATLASSIAN_CONFLUENCE_TOKEN\":\"$(echo -n "$ATLASSIAN_ACCESS" | base64 -w 0)\",\"ATLASSIAN_JIRA_TOKEN\":\"$(echo -n "$ATLASSIAN_ACCESS" | base64 -w 0)\",\"ATLASSIAN_REFRESH_TOKEN\":\"$(echo -n "$ATLASSIAN_NEW_REFRESH" | base64 -w 0)\"}}"
+  ATLASSIAN_SUCCESS=true
+fi
 
-# Function to extract refresh token from JWT
-extract_refresh_token() {
-    local jwt_token="$1"
-    local service_name="$2"
-    
-    log "Extracting refresh token for $service_name..."
-    
-    # Decode the JWT payload (second part after splitting by .)
-    local payload=$(echo "$jwt_token" | cut -d'.' -f2)
-    # Add padding if needed for base64 decoding
-    local padded_payload="${payload}$(printf '%*s' $(((4 - ${#payload} % 4) % 4)) '' | tr ' ' '=')"
-    
-    # Decode and extract refresh_token field
-    local refresh_token=$(echo "$padded_payload" | base64 -d 2>/dev/null | jq -r '.refresh_token // empty')
-    
-    if [[ -z "$refresh_token" || "$refresh_token" == "null" ]]; then
-        log "ERROR: Could not extract refresh token from $service_name JWT"
-        return 1
-    fi
-    
-    echo "$refresh_token"
-}
+# ============================================
+# MICROSOFT TOKEN REFRESH
+# ============================================
+echo ""
+echo "=== Refreshing Microsoft Tokens ==="
 
-# Function to refresh access token using refresh token
-refresh_access_token() {
-    local refresh_token="$1"
-    local service_name="$2"
-    
-    log "Refreshing access token for $service_name..."
-    
-    local response=$(curl -s -X POST "https://auth.atlassian.com/oauth/token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"grant_type\": \"refresh_token\",
-            \"client_id\": \"$CLIENT_ID\",
-            \"client_secret\": \"$CLIENT_SECRET\",
-            \"refresh_token\": \"$refresh_token\"
-        }")
-    
-    # Check if response contains error
-    if echo "$response" | jq -e '.error' > /dev/null; then
-        local error_msg=$(echo "$response" | jq -r '.error_description // .error')
-        log "ERROR: Token refresh failed for $service_name: $error_msg"
-        return 1
-    fi
-    
-    # Extract new access token
-    local new_access_token=$(echo "$response" | jq -r '.access_token')
-    local new_refresh_token=$(echo "$response" | jq -r '.refresh_token')
-    
-    if [[ -z "$new_access_token" || "$new_access_token" == "null" ]]; then
-        log "ERROR: No access token received for $service_name"
-        return 1
-    fi
-    
-    log "Successfully refreshed access token for $service_name"
-    echo "$new_access_token"
-}
+MS_CLIENT_ID=$(kubectl get secret microsoft-mcp-secrets -n librechat -o jsonpath='{.data.MICROSOFT_CLIENT_ID}' | base64 -d)
+MS_CLIENT_SECRET=$(kubectl get secret microsoft-mcp-secrets -n librechat -o jsonpath='{.data.MICROSOFT_CLIENT_SECRET}' | base64 -d)
+MS_TENANT_ID=$(kubectl get secret microsoft-mcp-secrets -n librechat -o jsonpath='{.data.MICROSOFT_TENANT_ID}' | base64 -d)
+MS_REFRESH_TOKEN=$(kubectl get secret microsoft-mcp-secrets -n librechat -o jsonpath='{.data.MICROSOFT_REFRESH_TOKEN}' | base64 -d)
 
-# Function to update Kubernetes secret
-update_secret() {
-    local secret_key="$1"
-    local new_token="$2"
-    local service_name="$3"
-    
-    log "Updating Kubernetes secret for $service_name..."
-    
-    # Base64 encode the new token
-    local encoded_token=$(echo -n "$new_token" | base64 -w 0)
-    
-    # Create patch JSON
-    local patch_json="{\"data\":{\"$secret_key\":\"$encoded_token\"}}"
-    
-    # Apply the patch
-    if kubectl patch secret atlassian-mcp-secrets -n librechat --type='merge' -p "$patch_json"; then
-        log "Successfully updated Kubernetes secret for $service_name"
-    else
-        log "ERROR: Failed to update Kubernetes secret for $service_name"
-        return 1
-    fi
-}
+echo "Tenant: $MS_TENANT_ID"
 
-# Function to restart deployment to pick up new tokens
-restart_deployment() {
-    log "Restarting atlassian-mcp-proxy deployment to pick up new tokens..."
-    
-    if kubectl rollout restart deployment/atlassian-mcp-proxy -n librechat; then
-        log "Successfully triggered deployment restart"
-        
-        # Wait for rollout to complete
-        if kubectl rollout status deployment/atlassian-mcp-proxy -n librechat --timeout=300s; then
-            log "Deployment restart completed successfully"
-        else
-            log "WARNING: Deployment restart timed out, but may still be in progress"
-        fi
-    else
-        log "ERROR: Failed to restart deployment"
-        return 1
-    fi
-}
+MS_RESPONSE=$(curl -s -X POST "https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "client_id=${MS_CLIENT_ID}" \
+  --data-urlencode "scope=Files.Read.All Sites.Read.All User.Read offline_access" \
+  --data-urlencode "refresh_token=${MS_REFRESH_TOKEN}" \
+  --data-urlencode "grant_type=refresh_token" \
+  --data-urlencode "client_secret=${MS_CLIENT_SECRET}")
 
-# Main refresh logic
-main() {
-    local success_count=0
-    local total_count=2
-    
-    # Refresh Confluence token
-    if CONFLUENCE_REFRESH=$(extract_refresh_token "$CURRENT_CONFLUENCE_TOKEN" "Confluence"); then
-        if NEW_CONFLUENCE_TOKEN=$(refresh_access_token "$CONFLUENCE_REFRESH" "Confluence"); then
-            if update_secret "ATLASSIAN_CONFLUENCE_TOKEN" "$NEW_CONFLUENCE_TOKEN" "Confluence"; then
-                success_count=$((success_count + 1))
-            fi
-        fi
-    fi
-    
-    # Refresh JIRA token  
-    if JIRA_REFRESH=$(extract_refresh_token "$CURRENT_JIRA_TOKEN" "JIRA"); then
-        if NEW_JIRA_TOKEN=$(refresh_access_token "$JIRA_REFRESH" "JIRA"); then
-            if update_secret "ATLASSIAN_JIRA_TOKEN" "$NEW_JIRA_TOKEN" "JIRA"; then
-                success_count=$((success_count + 1))
-            fi
-        fi
-    fi
-    
-    # Restart deployment if at least one token was refreshed successfully
-    if [[ $success_count -gt 0 ]]; then
-        restart_deployment
-        log "Token refresh completed successfully ($success_count/$total_count tokens refreshed)"
-    else
-        log "ERROR: No tokens were refreshed successfully"
-        return 1
-    fi
-    
-    # Cleanup
-    rm -rf "$TEMP_DIR"
-    log "Token refresh process completed"
-}
+MS_ACCESS=$(echo "$MS_RESPONSE" | jq -r '.access_token')
+MS_NEW_REFRESH=$(echo "$MS_RESPONSE" | jq -r '.refresh_token')
 
-# Execute main function
-main
+if [ "$MS_ACCESS" = "null" ] || [ -z "$MS_ACCESS" ]; then
+  echo "ERROR refreshing Microsoft tokens:"
+  echo "$MS_RESPONSE" | jq
+  MICROSOFT_SUCCESS=false
+else
+  echo "Successfully refreshed Microsoft tokens"
+  kubectl patch secret microsoft-mcp-secrets -n librechat --type='merge' -p="{\"data\":{\"MICROSOFT_ACCESS_TOKEN\":\"$(echo -n "$MS_ACCESS" | base64 -w 0)\",\"MICROSOFT_REFRESH_TOKEN\":\"$(echo -n "$MS_NEW_REFRESH" | base64 -w 0)\"}}"
+  MICROSOFT_SUCCESS=true
+fi
+
+# ============================================
+# BOX TOKEN REFRESH
+# ============================================
+echo ""
+echo "=== Refreshing Box Tokens ==="
+
+BOX_CLIENT_ID=$(kubectl get secret box-mcp-secrets -n librechat -o jsonpath='{.data.BOX_CLIENT_ID}' | base64 -d)
+BOX_CLIENT_SECRET=$(kubectl get secret box-mcp-secrets -n librechat -o jsonpath='{.data.BOX_CLIENT_SECRET}' | base64 -d)
+BOX_REFRESH_TOKEN=$(kubectl get secret box-mcp-secrets -n librechat -o jsonpath='{.data.BOX_REFRESH_TOKEN}' | base64 -d)
+
+BOX_RESPONSE=$(curl -s -X POST "https://api.box.com/oauth2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "client_id=${BOX_CLIENT_ID}" \
+  --data-urlencode "client_secret=${BOX_CLIENT_SECRET}" \
+  --data-urlencode "refresh_token=${BOX_REFRESH_TOKEN}" \
+  --data-urlencode "grant_type=refresh_token")
+
+BOX_ACCESS=$(echo "$BOX_RESPONSE" | jq -r '.access_token')
+BOX_NEW_REFRESH=$(echo "$BOX_RESPONSE" | jq -r '.refresh_token')
+
+if [ "$BOX_ACCESS" = "null" ] || [ -z "$BOX_ACCESS" ]; then
+  echo "ERROR refreshing Box tokens:"
+  echo "$BOX_RESPONSE" | jq
+  BOX_SUCCESS=false
+else
+  echo "Successfully refreshed Box tokens"
+  kubectl patch secret box-mcp-secrets -n librechat --type='merge' -p="{\"data\":{\"BOX_ACCESS_TOKEN\":\"$(echo -n "$BOX_ACCESS" | base64 -w 0)\",\"BOX_REFRESH_TOKEN\":\"$(echo -n "$BOX_NEW_REFRESH" | base64 -w 0)\"}}"
+  BOX_SUCCESS=true
+fi
+
+# ============================================
+# RESTART SERVICES TO PICK UP NEW TOKENS
+# ============================================
+echo ""
+echo "=== Restarting Proxy Services ==="
+
+if [ "$ATLASSIAN_SUCCESS" = "true" ] || [ "$MICROSOFT_SUCCESS" = "true" ] || [ "$BOX_SUCCESS" = "true" ]; then
+  kubectl rollout restart deployment gemini-search-proxy -n librechat
+  kubectl rollout restart deployment openai-search-proxy -n librechat
+  echo "Restarted search proxy deployments"
+fi
+
+echo ""
+echo "=========================================="
+echo "Token Refresh Completed: $(date)"
+echo "Atlassian: ${ATLASSIAN_SUCCESS:-false}"
+echo "Microsoft: ${MICROSOFT_SUCCESS:-false}"
+echo "Box: ${BOX_SUCCESS:-false}"
+echo "=========================================="

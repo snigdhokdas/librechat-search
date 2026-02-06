@@ -1,9 +1,14 @@
-# Reference values for Bitnami Redis Helm chart
+# Bitnami Redis Helm chart values
 # Install: helm install redis oci://registry-1.docker.io/bitnamicharts/redis -n librechat -f helm/redis-values.yaml
-architecture: standalone
+#
+# Redis is REQUIRED by analytics-service for search result caching (24h TTL).
+# Service DNS: redis-master.librechat.svc.cluster.local:6379
 auth:
-  password: "<set-via-helm-install>"
+  enabled: true
+  password: "<SET-YOUR-REDIS-PASSWORD>"
 master:
   persistence:
     enabled: true
     size: 5Gi
+metrics:
+  enabled: true
